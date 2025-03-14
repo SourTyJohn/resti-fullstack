@@ -1,6 +1,12 @@
-##### .env file
-```dotenv
-REDIS_PASSWORD=redis_password
-REDIS_USER_PASSWORD=user_password
-REDIS_USER=nuser
-```
+BACKEND STACK
+- [in_progress] FastAPI
+- [done] PostgreSQL
+- [in_progress] Redis
+- [in_progress] Redis
+
+FRONTEND STACK
+- [in_progress] ReactJS
+
+DEVOPS STACK
+- [done] Traefik
+- [in_progress] auto certbot ssl

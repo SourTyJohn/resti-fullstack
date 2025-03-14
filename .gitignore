@@ -384,3 +384,4 @@ pyrightconfig.json
 
 .docker-secrets/
 dev.db
+typings/
