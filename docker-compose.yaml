@@ -1,0 +1,109 @@
+volumes:
+    db-data:
+    back_dir:
+    ssl-certificates:
+
+networks:
+    resti-backend:
+
+secrets:
+    db_password:
+        file: ./.docker-secrets/db_password.txt
+    backend_secret_key:
+        file: ./.docker-secrets/backend_secret_key.txt
+    backend_superuser_password:
+        file: ./.docker-secrets/backend_superuser_password.txt
+
+
+services:
+    traefik:
+        image: traefik:3.0
+        ports:
+            - 80:80         # web
+            - 8080:8080     # traefik dashboard
+        restart: always
+        healthcheck:
+            test: ["CMD-SHELL", "wget -q --spider --proxy off ${DOMAIN}:8080/ping || exit 1"]
+            interval: 3s
+            retries: 5
+        labels:
+            - traefik.enable=true
+            - traefik.docker.network=resti-backend
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        command:
+            - --providers.docker
+            - --providers.docker.exposedbydefault=false
+            - --entrypoints.http.address=:80
+            - --accesslog
+            - --log
+            - "--api.insecure=true"
+            - "--ping=true"
+        networks:
+            - resti-backend
+            
+    db:
+        image: postgres:16.0
+        environment:
+            TZ: ${TZ}
+            PGTZ: ${TZ}
+            POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+            POSTGRES_USER: ${DB_USER}
+            POSTGRES_DB: ${DB_NAME}
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        volumes:
+           - db-data:/var/lib/postgresql/data
+        expose:
+            - 5432
+        networks:
+            - resti-backend
+        secrets:
+          - db_password
+
+    backend:
+        image: '${DOCKER_IMAGE_BACKEND}:${TAG-latest}'
+        build:
+            context: ./backend
+        restart: always
+        environment:
+            - TZ=${TZ}
+            - ENVIRONMENT=${ENVIRONMENT}
+            - STACK_NAME=${STACK_NAME}
+            - INNER_HOST=${INNER_HOST}
+            #
+            - DB_URI=${DB_URI}
+            - SECRET_KEY_FILE=/run/secrets/backend_secret_key
+            - DB_FIRST_SUPERUSER_PASSWORD_FILE=/run/secrets/backend_superuser_password
+            - DB_PASSWORD_FILE=/run/secrets/db_password
+            #
+            - DB_FIRST_SUPERUSER=${DB_FIRST_SUPERUSER}
+            - DB_USER=${DB_USER} 
+            - DB_NAME=${DB_NAME}
+            #
+            - WEB_CONCURRENCY=1
+            
+        depends_on:
+            db:
+                condition: service_healthy
+            traefik:
+                condition: service_healthy
+        volumes:
+            - back_dir:/backend
+        expose:
+            - 5000
+        labels:
+            - traefik.enable=true
+            - traefik.docker.network=resti-backend
+            - traefik.constraint-label=resti-backend
+            - traefik.http.routers.${STACK_NAME}.rule=Host(`${STACK_NAME}.${DOMAIN}`)
+            - traefik.http.routers.${STACK_NAME}-backend-http.entrypoints=http
+        networks:
+            - resti-backend
+        secrets:
+          - backend_secret_key
+          - backend_superuser_password
+          - db_password
