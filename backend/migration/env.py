@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-from app.models import metadata  # <- metadata
+from app.database.models import metadata  # <- metadata
 from app.config import config as project_config
 
 

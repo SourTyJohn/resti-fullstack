@@ -1,13 +1,13 @@
 from fastapi import APIRouter
 
-from app.schemas.users import (
-    UsersPOSTSchema,
-    UsersGETSchema,
+from app.core.dto.users import (
+    UserRegisterDTO, 
+    UserDTO
 )
-from app.services.users import UserService
 
-from app.api.deps import SessionDep
-from app.core.database import transaction
+from app.services.users import UserService
+from dishka.integrations.fastapi import FromDishka
+from dishka.integrations.fastapi import inject
 
 
 router = APIRouter(
@@ -16,9 +16,20 @@ router = APIRouter(
 )
 
 
-@router.post('/create', summary="Новый пользователь")
-async def user_register(data: UsersPOSTSchema, session: SessionDep) -> UsersGETSchema:
-    user_service = UserService(session)
-    async with transaction(session):
-        response = await user_service.register(data) # type: ignore
+@inject
+async def user_register(
+        data: UserRegisterDTO,
+        user_service: FromDishka[UserService]
+    ) -> UserDTO:
+    
+    response = await user_service.register(data)
     return response
+
+
+router.add_api_route(
+    '/create',
+    user_register,
+    response_model=UserDTO,
+    methods=['POST', ],
+    summary="Новый пользователь"
+)

@@ -1,6 +1,6 @@
 from typing import Type, TypeVar
 from pydantic import BaseModel
-from app.core.database import DecBase
+from app.database.models.base import DecBase
 
 
 T = TypeVar('T', bound=BaseModel)

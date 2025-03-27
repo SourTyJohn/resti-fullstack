@@ -2,7 +2,11 @@ from datetime import datetime
 import uuid
 
 
-class SchemaGETMixin:
+class IDMixin:
+    id: uuid.UUID
+
+
+class InDBMixin:
     """Миксинка для всех GET схем (scheme)
     Поля соотвествуют полям из app.database.base.DecBase"""
     id: uuid.UUID

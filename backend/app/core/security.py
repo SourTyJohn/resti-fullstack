@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from app.core.dto.auth import TokenPayload
 from typing import Any, Union
 
 import jwt
@@ -10,7 +11,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 ALGORITHM = "HS256"
-DEFAULT_TIMEDELTA_FOR_ACCESSTOKEN = timedelta(days=1)
+DEFAULT_TIMEDELTA_FOR_ACCESSTOKEN = timedelta(days=7)
 
 
 def create_access_token(
@@ -21,7 +22,7 @@ def create_access_token(
 
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode = { "exp": expire, "sub": str(subject) }
-    encoded_jwt = jwt.encode(to_encode, config.SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, config().SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
@@ -31,3 +32,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
+
+def decode_token(token: str) -> TokenPayload:
+    payload = jwt.decode(
+        token, config().SECRET_KEY, algorithms=[ALGORITHM, ]
+    )
+    return TokenPayload(**payload)

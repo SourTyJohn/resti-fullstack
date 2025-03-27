@@ -1,60 +1,65 @@
 from datetime import timezone, timedelta
-from functools import lru_cache
-from pathlib import Path
+from functools import cache
 import os
 
 from dotenv import get_key
 
-
-BASE_PATH = Path(__file__).parent.parent.parent 
+try:
+    ENV_FILE_PATH = os.environ["PATH_TO_BACKEND_DOTENV_FILE"]
+except KeyError:
+    print("environment variable PATH_TO_BACKEND_DOTENV_FILE not set")
+    ENV_FILE_PATH = None
 
 
 class Settings:
-    DEFAULT_ENV_FILE  = BASE_PATH / '.env.dev'
-
     def __init__(self):
-        self.__env_file = Settings.DEFAULT_ENV_FILE
+        self.__env_file = ENV_FILE_PATH
 
-        self.TIMEZONE: timezone | None = timezone(
+        self.TIMEZONE: timezone = timezone(
             timedelta(
-                hours=int(self.__get_env("TZ")[-2:])  # type: ignore
+                hours=int(self.__get_env_req("TZ")[-2:])  # type: ignore
         ))
-        self.ENVIRONMENT:                    str | None = self.__get_env("ENVIRONMENT")
-        self.STACK_NAME:                     str | None = self.__get_env("STACK_NAME")
-        self.INNER_HOST:                     str | None = self.__get_env("INNER_HOST")
-        self.DB_FIRST_SUPERUSER:             str | None = self.__get_env("DB_FIRST_SUPERUSER")
-        self.DB_URI:                         str | None = self.__get_env("DB_URI")
+        self.ENVIRONMENT:          str = self.__get_env_req("ENVIRONMENT")
+        self.STACK_NAME:           str = self.__get_env_req("STACK_NAME")
+        self.INNER_HOST:           str = self.__get_env_req("INNER_HOST")
+        self.DB_FIRST_SUPERUSER:   str = self.__get_env_req("DB_FIRST_SUPERUSER")
+        self.DB_URI:               str = self.__get_env_req("DB_URI")
     
-        self.DB_FIRST_SUPERUSER_PASSWORD: str | None = self.__get_env(
+        self.DB_FIRST_SUPERUSER_PASSWORD: str = self.__get_env(
             "DB_FIRST_SUPERUSER_PASSWORD",
             required=False
-        )
+        )  # type: ignore
         if self.DB_FIRST_SUPERUSER_PASSWORD is None:
-            file_path = self.__get_env("DB_FIRST_SUPERUSER_PASSWORD_FILE")
-            with open(file_path) as file:  # type: ignore
+            file_path = self.__get_env_req("DB_FIRST_SUPERUSER_PASSWORD_FILE")
+            with open(file_path) as file:
                 self.DB_FIRST_SUPERUSER_PASSWORD = file.read().strip()
 
-        self.DB_PASSWORD: str | None = self.__get_env(
+        self.DB_PASSWORD: str = self.__get_env(
             "DB_PASSWORD",
             required=False
-        )
+        ) # type: ignore
         if self.DB_PASSWORD is None:
-            file_path = self.__get_env("DB_PASSWORD_FILE")
+            file_path = self.__get_env_req("DB_PASSWORD_FILE")
             with open(file_path) as file:
                 self.DB_PASSWORD = file.read().strip()
 
-        self.SECRET_KEY: str | None = self.__get_env(
+        self.SECRET_KEY: str = self.__get_env(
             "SECRET_KEY",
             required=False
-        )
+        ) # type: ignore
         if self.SECRET_KEY is None:
-            file_path = self.__get_env("SECRET_KEY_FILE")
+            file_path = self.__get_env_req("SECRET_KEY_FILE")
             with open(file_path) as file:
                 self.SECRET_KEY = file.read().strip()
 
-        self.DB_URI = self.DB_URI.replace("%PATH%", str(BASE_PATH / "backend")) # type: ignore
         self.DB_URI = self.DB_URI.replace("%DB_PASSWORD%", self.DB_PASSWORD) # type: ignore
 
+    def __get_env_req(self, env_variable: str) -> str:
+        r = self.__get_env(env_variable=env_variable)
+        if r is not None:
+            return r
+        raise ValueError()
+    
     def __get_env(
             self,
             env_variable: str,
@@ -76,6 +81,6 @@ class Settings:
         return value
 
 
-@lru_cache()
 def config() -> Settings:
-    return Settings()
+    __cfg = Settings()
+    return __cfg
